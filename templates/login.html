@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Smart Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <h1>🏠 Smart Home</h1>
+      <p>Đăng nhập để tiếp tục</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label>👤 Username</label>
+        <input type="text" name="username" class="form-control" placeholder="Nhập username" required autofocus>
+      </div>
+
+      <div class="form-group">
+        <label>🔒 Password</label>
+        <input type="password" name="password" class="form-control" placeholder="Nhập password" required>
+      </div>
+
+      <button type="submit" class="btn-login">🔓 ĐĂNG NHẬP</button>
+    </form>
+
+    <div class="demo-accounts">
+      <h3>📋 Tài khoản Demo:</h3>
+      <p><strong>Admin:</strong> <code>admin / admin123</code></p>
+      <p><strong>User 1:</strong> <code>user1 / user123</code></p>
+      <p><strong>User 2:</strong> <code>user2 / user123</code></p>
+      <p><strong>User 3:</strong> <code>user3 / user123</code></p>
+    </div>
+  </div>
+</body>
+</html>

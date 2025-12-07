@@ -1,0 +1,126 @@
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.login-container {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-header h1 {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.login-header p {
+  color: rgba(255,255,255,0.7);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 1em;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.form-control::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+.btn-login {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+
+.btn-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(76,175,80,0.4);
+}
+
+.alert {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.alert-error {
+  background: rgba(244,67,54,0.3);
+  border: 2px solid #f44336;
+}
+
+.demo-accounts {
+  margin-top: 30px;
+  padding: 20px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  font-size: 0.9em;
+}
+
+.demo-accounts h3 {
+  margin-bottom: 15px;
+  color: #64B5F6;
+}
+
+.demo-accounts p {
+  margin: 8px 0;
+  color: rgba(255,255,255,0.8);
+}
+
+.demo-accounts code {
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #4CAF50;
+}

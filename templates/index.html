@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏠 Smart Home Control System</h1>
+      <div class="user-info">
+        <div class="user-badge {{ 'admin' if is_admin else '' }}">
+          <strong>{{ '👑 Admin' if is_admin else '👤 User' }}:</strong> {{ username }}
+        </div>
+        <form method="POST" action="{{ url_for('logout') }}" style="margin: 0;">
+          <button type="submit" class="btn-logout">🚪 Đăng xuất</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="connectionStatus" class="connection-status disconnected">
+      <span class="status-indicator offline"></span>
+      <span id="statusText">Đang kết nối tới ESP32...</span>
+    </div>
+
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab1', this)">🏡 Home Controls</button>
+      <button class="tab-btn" onclick="switchTab('tab2', this)">⚙️ Device Settings</button>
+      <button class="tab-btn" onclick="switchTab('tab3', this)">📹 Security Camera</button>
+      <button class="tab-btn" onclick="switchTab('tab4', this)">➕ Add Face</button>
+    </div>
+
+
+
+    <input type="hidden" id="isAdmin" value="{{ 'true' if is_admin else 'false' }}">
+
+    <!-- TAB 1 -->
+    <div id="tab1" class="tab-content active">
+      <div class="grid-container">
+
+        <!-- Door Control -->
+        <div class="card">
+          <div class="card-header">
+            <div class="icon green">🚪</div>
+            <span>Door Control</span>
+          </div>
+          <div class="door-visual">
+            <div class="door-panel" id="doorPanel">
+              <div class="door-handle"></div>
+            </div>
+          </div>
+          <div class="door-status closed" id="doorStatus">🔴 CLOSED</div>
+          <div class="door-controls">
+            <button class="btn btn-success" onclick="openDoorClick()">🔓 OPEN</button>
+            <button class="btn btn-danger" onclick="closeDoorClick()">🔒 CLOSE</button>
+          </div>
+        </div>
+
+        <!-- RFID Management -->
+        <div class="card">
+          <div class="card-header">
+            <div class="icon blue">💳</div>
+            <span>RFID Card Management</span>
+          </div>
+
+          <div class="rfid-current" id="rfidCurrent">
+            <strong>Current Card:</strong> <span id="currentUID">No card scanned</span>
+          </div>
+
+          {% if is_admin %}
+          <div class="rfid-form">
+            <div class="form-group">
+              <label>📇 RFID Card UID:</label>
+              <input type="text" class="form-control" id="cardUID" placeholder="Scan card first" readonly>
+            </div>
+            <div class="form-group">
+              <label>👤 Card Owner Name:</label>
+              <input type="text" class="form-control" id="cardOwner" placeholder="Enter owner name">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="addCard()">➕ ADD CARD</button>
+          </div>
+          {% else %}
+          <div class="access-denied">
+            <p>⚠️ Chỉ Admin mới có quyền thêm thẻ</p>
+          </div>
+          {% endif %}
+
+          <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+
+          <div style="margin-bottom: 15px;">
+            <strong>📡 Scan RFID Card</strong>
+          </div>
+          <button class="btn btn-primary" id="scanBtn" style="width: 100%;" onclick="toggleScanning()">🔍 START SCANNING</button>
+
+          <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <strong>💾 Saved Cards:</strong>
+            <span class="badge badge-success" id="cardTotal">0 CARD(S)</span>
+          </div>
+
+          <div class="card-list" id="cardList"></div>
+        </div>
+
+
+
+      </div>
+
+      <!-- Access History -->
+      <div class="card">
+        <div class="card-header">
+          <div class="icon orange">📋</div>
+          <span>Access History</span>
+        </div>
+
+        <div class="history-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Method</th>
+                <th>UID</th>
+                <th>Name</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: rgba(255,255,255,0.5);">
+                  No access history yet
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2 -->
+    <div id="tab2" class="tab-content">
+
+      <div class="devices-grid">
+        <div class="device-card">
+          <div class="device-icon">💡</div>
+          <div class="device-name">Đèn phòng khách</div>
+          <label class="switch">
+            <input type="checkbox" id="den1" onchange="toggleDevice('den1', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="device-card">
+          <div class="device-icon">💡</div>
+          <div class="device-name">Đèn phòng ngủ</div>
+          <label class="switch">
+            <input type="checkbox" id="den2" onchange="toggleDevice('den2', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="device-card">
+          <div class="device-icon">💡</div>
+          <div class="device-name">Đèn phòng bếp</div>
+          <label class="switch">
+            <input type="checkbox" id="den3" onchange="toggleDevice('den3', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="device-card">
+          <div class="device-icon">🌀</div>
+          <div class="device-name">Quạt</div>
+          <label class="switch">
+            <input type="checkbox" id="quat" onchange="toggleDevice('quat', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div class="sensor-display">
+          <div class="sensor-label">🌡️ Temperature</div>
+          <div class="sensor-reading" id="temperature">--°C</div>
+          <div class="threshold-control">
+            <label><strong>Auto Fan Threshold:</strong></label>
+            <div style="margin-top: 15px;">
+              <input type="number" id="tempThreshold" value="30" min="15" max="45" step="0.5">
+              <button class="btn btn-success" onclick="setThreshold()">💾 Save</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sensor-display">
+          <div class="sensor-label">💧 Humidity</div>
+          <div class="sensor-reading" id="humidity">--%</div>
+          <div style="margin-top: 30px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <p style="font-size: 0.9em; color: rgba(255,255,255,0.7);">
+              Sensor updates every 2.5 seconds
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Security Camera - Face Recognition -->
+    <div id="tab3" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+        </div>
+
+        <div class="card-body">
+        <!-- Hộp ẩn chứa video + canvas để capture, KHÔNG hiển thị ra màn hình -->
+          <div style="width:1px; height:1px; overflow:hidden">
+            <!-- Video ẩn để capture -->
+            <video id="frVideo" width="480" height="360" autoplay muted playsinline
+                   style="opacity:0; position:fixed; bottom:0; right:0; pointer-events:none; z-index:-1;"></video>
+
+            <!-- Canvas cũng ẩn luôn, chỉ dùng để toDataURL -->
+            <canvas id="frCanvas" width="480" height="360" style="display:none;"></canvas>
+          </div>
+
+          <div style="margin-bottom:10px; font-size:0.95rem;">
+            <div>ID hiện tại: <span id="frCurrentId">---</span></div>
+            <div>ID ổn định: <span id="frStableId">---</span></div>
+          </div>
+
+          <div style="margin-bottom:15px;">
+            <button class="btn btn-danger" type="button" onclick="stopFaceRecognition()">⏹️ Stop</button>
+          </div>
+
+          <p>Khung hình sau xử lý từ server:</p>
+          <img id="frResultImage" src=""
+             style="
+               width: 100%;
+               max-width: 900px;     /* muốn to hơn thì tăng lên, ví dụ 1000px */
+               height: auto;         /* GIỮ ĐÚNG TỈ LỆ */
+               display: block;
+               margin: 0 auto;       /* căn giữa */
+               border-radius: 16px;
+               border: 2px solid rgba(255,255,255,0.2);
+               background: #000;
+             " />
+
+
+
+        </div>
+
+
+      </div>
+    </div>
+
+    <!-- TAB 4: Add Face -->
+    <div id="tab4" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon blue">➕</div>
+          <span>Add New Face</span>
+        </div>
+
+        <div class="form-group">
+          <label>👤 ID:</label>
+          <input id="afPersonId" type="text" class="form-control"
+                 placeholder="Ví dụ: 1, 2, 101" />
+        </div>
+
+        <div style="margin-top:15px;">
+          <!-- Hộp ẩn chứa video + canvas để capture -->
+            <video id="afVideo" width="480" height="360" autoplay muted playsinline
+                   style="opacity:0; position:fixed; bottom:0; right:0; pointer-events:none; z-index:-1;"></video>
+            <canvas id="afCanvas" width="480" height="360" style="display:none;"></canvas>
+
+          </div>
+
+          <p>Khung hình từ server (có elip + hướng dẫn):</p>
+          <img id="afResultImage" src=""
+             style="
+               width: 100%;
+               max-width: 900px;
+               height: auto;
+               display: block;
+               margin: 0 auto;
+               border-radius:16px;
+               border:2px solid rgba(255,255,255,0.2);
+               background:#000;
+             " />
+
+          <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="afBtnStart" class="btn btn-success" type="button">
+              ▶️ Bắt đầu chụp &amp; huấn luyện
+            </button>
+            <button id="afBtnStop" class="btn btn-danger" type="button">
+              ⏹️ Dừng
+            </button>
+          </div>
+
+          <div id="afStatus" style="margin-top:10px;">Chưa bắt đầu.</div>
+        </div>
+      </div>
+    </div>
+
+
+
+
+
+  </div>
+
+  <script>
+    let scanInterval = null;
+    let statusInterval = null;
+    let isConnected = false;
+    let historyInterval = null;
+
+    const isAdmin = document.getElementById('isAdmin').value === 'true';
+
+        // ====== CAMERA DÙNG CHUNG CHO NHẬN DIỆN & ADD FACE ======
+    let globalCameraStream = null;
+
+    const frVideo = document.getElementById('frVideo');
+    const frCanvas = document.getElementById('frCanvas');
+    const frCurrentIdSpan = document.getElementById('frCurrentId');
+    const frStableIdSpan = document.getElementById('frStableId');
+    const frResultImage = document.getElementById('frResultImage');
+    let frRunning = false;
+
+    const afVideo = document.getElementById('afVideo');
+    const afCanvas = document.getElementById('afCanvas');
+    const afPersonIdInput = document.getElementById('afPersonId');
+    const afStatusEl = document.getElementById('afStatus');
+    const afResultImage = document.getElementById('afResultImage');
+    const afBtnStart = document.getElementById('afBtnStart');
+    const afBtnStop = document.getElementById('afBtnStop');
+    let afRunning = false;
+
+    async function ensureCameraStream(videoElement) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không hỗ trợ webcam.');
+        return null;
+      }
+      try {
+        if (!globalCameraStream) {
+          globalCameraStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+        if (videoElement && videoElement.srcObject !== globalCameraStream) {
+          videoElement.srcObject = globalCameraStream;
+        }
+        return globalCameraStream;
+      } catch (err) {
+        console.error('Không truy cập được webcam:', err);
+        alert('Không truy cập được webcam: ' + err.message);
+        return null;
+      }
+    }
+
+    // ----- SECURITY CAMERA: RECOGNITION -----
+    async function frLoopRecognize() {
+      if (!frRunning || !frVideo || !frCanvas) return;
+
+      const ctx = frCanvas.getContext('2d');
+      ctx.drawImage(frVideo, 0, 0, frCanvas.width, frCanvas.height);
+      const dataUrl = frCanvas.toDataURL('image/jpeg');
+
+      try {
+        const res = await fetch('/api/recognize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl })
+        });
+
+        const json = await res.json();
+        if (json.ok) {
+          if (frCurrentIdSpan) frCurrentIdSpan.textContent = json.current_id;
+          if (frStableIdSpan) frStableIdSpan.textContent = json.stable_id;
+          if (frResultImage && json.image) {
+            frResultImage.src = json.image;
+          }
+        } else {
+          console.error(json.error);
+        }
+      } catch (err) {
+        console.error('Lỗi gọi API /api/recognize:', err);
+      }
+
+      if (frRunning) {
+        setTimeout(frLoopRecognize, 50); //
+      }
+    }
+
+    async function startFaceRecognition() {
+      if (!frVideo || !frCanvas) return;
+      if (frRunning) return;
+
+      const stream = await ensureCameraStream(frVideo);
+      if (!stream) return;
+
+      frRunning = true;
+      frLoopRecognize();
+    }
+
+    function stopFaceRecognition() {
+      frRunning = false;
+    }
+
+    // ----- ADD FACE -----
+    async function afLoopAddFace() {
+      if (!afRunning || !afVideo || !afCanvas) return;
+
+      const id = afPersonIdInput.value.trim();
+      if (!id) {
+        alert('Hãy nhập ID nhân viên trước.');
+        afRunning = false;
+        return;
+      }
+
+      const ctx = afCanvas.getContext('2d');
+      ctx.drawImage(afVideo, 0, 0, afCanvas.width, afCanvas.height);
+      const dataUrl = afCanvas.toDataURL('image/jpeg');
+
+      try {
+        const res = await fetch('/api/add_face_stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person_id: id, image: dataUrl })
+        });
+
+        const json = await res.json();
+        if (!json.ok) {
+          if (afStatusEl) afStatusEl.textContent = 'Lỗi: ' + json.error;
+          afRunning = false;
+          return;
+        }
+
+        if (json.image && afResultImage) {
+          afResultImage.src = json.image;
+        }
+
+        if (afStatusEl) {
+          afStatusEl.textContent =
+            (json.message || '') +
+            ` | Front: ${json.front_count}/10, Left: ${json.left_count}/10, Right: ${json.right_count}/10`;
+        }
+
+        if (json.done) {
+          afRunning = false;
+        }
+      } catch (err) {
+        console.error('Lỗi gọi API /api/add_face_stream:', err);
+        if (afStatusEl) afStatusEl.textContent = 'Lỗi kết nối tới server.';
+        afRunning = false;
+      }
+
+      if (afRunning) {
+        setTimeout(afLoopAddFace, 50);
+      }
+    }
+
+    async function startAddFace() {
+      if (!afVideo || !afCanvas) return;
+      if (afRunning) return;
+
+      const id = afPersonIdInput.value.trim();
+      if (!id) {
+        alert('Hãy nhập ID nhân viên trước.');
+        return;
+      }
+
+      const stream = await ensureCameraStream(afVideo);
+      if (!stream) return;
+
+      afRunning = true;
+      if (afStatusEl) afStatusEl.textContent = 'Đang chụp ảnh... Hãy làm theo hướng dẫn xoay mặt.';
+      afLoopAddFace();
+    }
+
+    function stopAddFace() {
+      afRunning = false;
+      if (afStatusEl) afStatusEl.textContent = 'Đã dừng.';
+    }
+
+    if (afBtnStart) {
+      afBtnStart.addEventListener('click', startAddFace);
+    }
+    if (afBtnStop) {
+      afBtnStop.addEventListener('click', stopAddFace);
+    }
+
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+      });
+
+      const tabEl = document.getElementById(tabId);
+      if (tabEl) tabEl.classList.add('active');
+      if (btn) btn.classList.add('active');
+
+      // Bật/tắt nhận diện & add face theo tab
+      if (tabId === 'tab3') {
+        // Security Camera
+        startFaceRecognition();
+        stopAddFace();
+      } else if (tabId === 'tab4') {
+        // Add Face: chờ người dùng bấm nút Start
+        stopFaceRecognition();
+      } else {
+        // Các tab khác: tắt hết xử lý AI
+        stopFaceRecognition();
+        stopAddFace();
+      }
+    }
+
+
+
+    function updateConnectionStatus(connected) {
+      const statusDiv = document.getElementById('connectionStatus');
+      const statusText = document.getElementById('statusText');
+      const indicator = statusDiv.querySelector('.status-indicator');
+
+      if (connected) {
+        statusDiv.className = 'connection-status connected';
+        indicator.className = 'status-indicator online';
+        statusText.textContent = '✅ Đã kết nối tới ESP32';
+        isConnected = true;
+      } else {
+        statusDiv.className = 'connection-status disconnected';
+        indicator.className = 'status-indicator offline';
+        statusText.textContent = '❌ Không kết nối được tới ESP32';
+        isConnected = false;
+      }
+    }
+    /*
+    function openDoor() {
+      document.getElementById('doorPanel').classList.add('open');
+      document.getElementById('doorStatus').className = 'door-status opened';
+      document.getElementById('doorStatus').textContent = '🟢 OPENED';
+
+      setTimeout(() => closeDoor(), 5000);
+    }
+
+    function closeDoor() {
+      document.getElementById('doorPanel').classList.remove('open');
+      document.getElementById('doorStatus').className = 'door-status closed';
+      document.getElementById('doorStatus').textContent = '🔴 CLOSED';
+    }
+    */
+    function setDoorUI(isOpen) {
+      const panel = document.getElementById('doorPanel');
+      const status = document.getElementById('doorStatus');
+      if (!panel || !status) return;
+
+      if (isOpen) {
+        panel.classList.add('open');
+        status.className = 'door-status opened';
+        status.textContent = '🟢 OPENED';
+      } else {
+        panel.classList.remove('open');
+        status.className = 'door-status closed';
+        status.textContent = '🔴 CLOSED';
+      }
+    }
+
+
+
+    async function openDoorClick() {
+      // Cập nhật UI ngay cho mượt
+      setDoorUI(true);
+
+      try {
+        const res = await fetch('/api/door/open', { method: 'POST' });
+        const data = await res.json();
+
+        if (!data.success) {
+          console.error(data.error || 'Door open failed');
+          setDoorUI(false);
+          alert('Không mở được cửa trên ESP32');
+        } else {
+          addToHistory('Door Control', '-', '-', 'Success');
+          // Sau 5s tự đóng lại
+          setTimeout(() => {
+            setDoorUI(false);
+          }, 5000);
+        }
+      } catch (err) {
+        console.error(err);
+        setDoorUI(false);
+        alert('Lỗi kết nối tới server khi mở cửa');
+      }
+    }
+
+    async function closeDoorClick() {
+      // Đóng UI ngay
+      setDoorUI(false);
+
+      try {
+        const res = await fetch('/api/door/close', { method: 'POST' });
+        const data = await res.json();
+
+        if (!data.success) {
+          console.error(data.error || 'Door close failed');
+          setDoorUI(true);
+          alert('Không đóng được cửa trên ESP32');
+        } else {
+          addToHistory('Door Control', '-', '-', 'OFF');
+        }
+      } catch (err) {
+        console.error(err);
+        setDoorUI(true);
+        alert('Lỗi kết nối tới server khi đóng cửa');
+      }
+    }
+
+
+
+
+    async function toggleScanning() {
+      const btn = document.getElementById('scanBtn');
+
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+        btn.textContent = '🔍 START SCANNING';
+        btn.className = 'btn btn-primary';
+        return;
+      }
+
+      btn.textContent = '⏹️ STOP SCANNING';
+      btn.className = 'btn btn-danger';
+
+      scanInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/api/rfid/current');
+          const data = await response.json();
+
+          if (data.uid && data.uid !== '') {
+            document.getElementById('currentUID').textContent = data.uid;
+            if (isAdmin) {
+              document.getElementById('cardUID').value = data.uid;
+            }
+          }
+        } catch (error) {
+          console.error('Scan error:', error);
+        }
+      }, 2000);
+    }
+
+    async function addCard() {
+      if (!isAdmin) {
+        alert('⚠️ Chỉ Admin mới có quyền thêm thẻ!');
+        return;
+      }
+
+      const uid = document.getElementById('cardUID').value;
+      const owner = document.getElementById('cardOwner').value;
+
+      if (!uid) {
+        alert('Please scan a card first!');
+        return;
+      }
+
+      if (!owner) {
+        alert('Please enter card owner name!');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/rfid/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name: owner})
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert(`Card added successfully!\\nUID: ${data.uid}\\nName: ${owner}`);
+
+          if (scanInterval) {
+            clearInterval(scanInterval);
+            scanInterval = null;
+            const btn = document.getElementById('scanBtn');
+            btn.textContent = '🔍 START SCANNING';
+            btn.className = 'btn btn-primary';
+          }
+
+          document.getElementById('cardOwner').value = '';
+          document.getElementById('cardUID').value = '';
+          document.getElementById('currentUID').textContent = 'No card scanned';
+
+          loadCards();
+          addToHistory('RFID Card Added', data.uid, owner, 'Success');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        alert('Error adding card: ' + error.message);
+      }
+    }
+
+    async function loadCards() {
+      try {
+        const response = await fetch('/api/rfid/list');
+        const data = await response.json();
+
+        const cardList = document.getElementById('cardList');
+        cardList.innerHTML = '';
+
+        document.getElementById('cardTotal').textContent = `${data.total} CARD(S)`;
+
+        data.cards.forEach((card) => {
+          const cardItem = document.createElement('div');
+          cardItem.className = 'card-item';
+          cardItem.innerHTML = `
+            <div class="card-info">
+              <div class="card-uid">💳 ${card.uid}</div>
+              <div style="font-size: 0.9em; margin-top: 5px; color: rgba(255,255,255,0.7);">
+                ${card.name}
+              </div>
+            </div>
+            ${isAdmin ? `<button class="btn-delete" onclick="deleteCard('${card.uid}')">🗑️ Delete</button>` : ''}
+          `;
+          cardList.appendChild(cardItem);
+        });
+
+      } catch (error) {
+        console.error('Error loading cards:', error);
+      }
+    }
+
+    async function deleteCard(uid) {
+      if (!isAdmin) {
+        alert('⚠️ Chỉ Admin mới có quyền xóa thẻ!');
+        return;
+      }
+
+      if (!confirm(`Delete card ${uid}?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/rfid/delete?uid=${uid}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          alert('Card deleted!');
+          loadCards();
+          addToHistory('RFID Card Deleted', uid, '-', 'Info');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    async function toggleDevice(device, state) {
+      try {
+        const response = await fetch('/api/control', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({device: device, state: state})
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          console.log(data.message);
+          addToHistory(device.toUpperCase() + ' Control', '-', '-', state ? 'ON' : 'OFF');
+        } else {
+          alert('Error: ' + data.error);
+          document.getElementById(device).checked = !state;
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+        document.getElementById(device).checked = !state;
+      }
+    }
+
+    async function setThreshold() {
+      const threshold = parseFloat(document.getElementById('tempThreshold').value);
+
+      if (isNaN(threshold) || threshold < 15 || threshold > 45) {
+        alert('Please enter valid threshold (15-45°C)');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/threshold', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({value: threshold})
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert(`Threshold updated to ${data.threshold}°C\\nAuto fan mode enabled`);
+          addToHistory('Threshold Updated', '-', '-', `${data.threshold}°C`);
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+
+
+    async function loadAccessHistory() {
+  try {
+    const res = await fetch('/api/history');
+    const data = await res.json();
+    const tbody = document.getElementById('historyBody');
+
+    tbody.innerHTML = '';
+
+    if (!data.history || data.history.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; color: rgba(255,255,255,0.5);">
+            No access history yet
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    data.history.forEach(item => {
+      const row = document.createElement('tr');
+
+      let badgeClass = 'badge-info';
+      if (item.result === 'Success' || item.result === 'Manual Approved') {
+        badgeClass = 'badge-success';
+      } else if (item.result === 'Rejected' || item.result === 'Denied' || item.result === 'Timeout') {
+        badgeClass = 'badge-danger';
+      }
+
+      row.innerHTML = `
+        <td>${item.time}</td>
+        <td>${item.method}</td>
+        <td>${item.uid || '-'}</td>
+        <td>${item.name || '-'}</td>
+        <td><span class="badge ${badgeClass}">${item.result}</span></td>
+      `;
+
+      tbody.appendChild(row);
+    });
+  } catch (err) {
+    console.error('Error loading access history:', err);
+  }
+}
+
+
+
+    async function updateStatus() {
+      try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+
+        updateConnectionStatus(true);
+
+        document.getElementById('den1').checked = data.devices.den1;
+        document.getElementById('den2').checked = data.devices.den2;
+        document.getElementById('den3').checked = data.devices.den3;
+        document.getElementById('quat').checked = data.devices.quat;
+
+        document.getElementById('temperature').textContent = data.sensors.temperature.toFixed(1) + '°C';
+        document.getElementById('humidity').textContent = data.sensors.humidity.toFixed(1) + '%';
+        document.getElementById('tempThreshold').value = data.sensors.tempThreshold.toFixed(1);
+        /*
+        if (data.door.open) {
+          openDoor();
+        }
+        */
+        setDoorUI(data.door.open);
+
+
+
+      } catch (error) {
+        console.error('Status update error:', error);
+        updateConnectionStatus(false);
+        document.getElementById('temperature').textContent = '--°C';
+        document.getElementById('humidity').textContent = '--%';
+      }
+    }
+
+    function addToHistory(method, uid, name, result) {
+      // Không còn tự thêm log ở client nữa.
+      // Chỉ reload dữ liệu từ server (nếu muốn cập nhật “ngay lập tức” sau khi action).
+      loadAccessHistory();
+    }
+
+
+    window.addEventListener('load', () => {
+      console.log('🌐 Smart Home Dashboard Started');
+      console.log('📡 Connecting to ESP32...');
+
+      loadCards();
+      updateStatus();
+      statusInterval = setInterval(updateStatus, 3000);
+
+        loadAccessHistory();
+      // Cập nhật lại mỗi 5 giây (tuỳ bạn)
+      historyInterval = setInterval(loadAccessHistory, 2000);
+
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (scanInterval) clearInterval(scanInterval);
+      if (statusInterval) clearInterval(statusInterval);
+      if (historyInterval) clearInterval(historyInterval);
+      if (globalCameraStream) {
+        globalCameraStream.getTracks().forEach(t => t.stop());
+      }
+    });
+
+  </script>
+</body>
+</html>
